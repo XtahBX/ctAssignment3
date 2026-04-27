@@ -1,3 +1,7 @@
+import json
+import os
+
+
 class Graph:
     def __init__(self):
         self.adj_list: list[int] = []
@@ -65,6 +69,57 @@ def create_lobster_graph(graph: Graph, n: int, p: int):
             for p_idx in range(1, p):
                 graph.add_edge(idx, idx + p_idx)
 
+def middle_node_value(n: int, p: int, idx: int) -> int:
+    node_section_size = 2 * p + 1
+    curr_section = idx // node_section_size + 1
+    if curr_section % 2 == 0:
+        return (node_section_size * curr_section) // 2
+    else:
+        if curr_section < n:
+            return (node_section_size * curr_section - (2 * p - 1)) // 2
+        else:
+            return ((node_section_size * curr_section) + 1) // 2
+
+def upper_node_value(n: int, p: int, idx: int) -> int:
+    node_section_size = 2 * p + 1
+    curr_section = idx // node_section_size + 1
+    if curr_section % 2 == 0:
+        return (node_section_size * curr_section) // 2 - p
+    else:
+        if curr_section < n:
+            return (node_section_size * curr_section - 1) // 2
+        else:
+            return (node_section_size * (curr_section - 1) - 2) // 2
+
+def lower_node_value(n: int, p: int, idx: int) -> int:
+    node_section_size = 2 * p + 1
+    curr_section = idx // node_section_size + 1
+    if curr_section % 2 == 0:
+        return (node_section_size * curr_section) // 2
+    else:
+        if curr_section < n:
+            return (node_section_size * (curr_section + 1) - 2) // 2
+        else:
+            return (node_section_size * curr_section - 1) // 2
+
+def circle_node_value(n: int, p: int, idx: int) -> int:
+    node_section_size = 2 * p + 1
+    curr_section = idx // node_section_size + 1
+    if idx % node_section_size <= p:
+        j = idx - node_section_size * (curr_section - 1) - 1
+    else:
+        j = idx - node_section_size * (curr_section - 1) - (p + 1)
+    if curr_section < n:
+        if curr_section % 2 == 0:
+            return (node_section_size * curr_section) // 2 - p + j
+        else:
+            return (node_section_size * (curr_section - 1)) // 2 - p + 1 + j
+    else:
+        if curr_section % 2 == 0:
+            return (node_section_size * curr_section) // 2 + j
+        else:
+            return (node_section_size * (curr_section - 1)) // 2 + 1 + j
+
 def add_k_labeling(graph: Graph, n: int, p: int):
     node_section_size = 2 * p + 1
     node_total = node_section_size * n
@@ -76,15 +131,38 @@ def add_k_labeling(graph: Graph, n: int, p: int):
     graph.set_node(p + 1, p + 1)
     for idx in range(node_section_size, node_total):
         if idx % node_section_size == 0:
-            graph.set_node(idx, idx)
+            node_value = middle_node_value(n, p, idx)
         elif idx % node_section_size == 1:
-            graph.set_node(idx, idx)
-        elif idx % node_section_size <= p:
-            graph.set_node(idx, idx)
+            node_value = upper_node_value(n, p, idx)
         elif idx % node_section_size == p + 1:
-            graph.set_node(idx, idx)
+            node_value = lower_node_value(n, p, idx)
         else:
-            graph.set_node(idx, idx)
+            node_value = circle_node_value(n, p, idx)
+        graph.set_node(idx, node_value)
+
+
+def save_graph(graph: Graph, path: str) -> None:
+    """Save graph to JSON (.json) or edges CSV (.csv)."""
+    try:
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".csv":
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("u,v,weight\n")
+                seen = set()
+                for u in sorted(graph.edge_list):
+                    for v, weight in graph.edge_list[u]:
+                        edge = (u, v) if u < v else (v, u)
+                        if edge in seen:
+                            continue
+                        seen.add(edge)
+                        fh.write(f"{edge[0]},{edge[1]},{weight}\n")
+        else:
+            payload = {"adj_list": graph.adj_list, "edge_list": {str(k): v for k, v in graph.edge_list.items()}}
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(payload, fh, indent=2)
+        print(f"Graph saved to {path}")
+    except Exception as e:
+        print(f"Failed to save graph to {path}: {e}")
 
 def plot_lobster_graph(
     graph: Graph,
@@ -93,6 +171,7 @@ def plot_lobster_graph(
     show_labels: bool = True,
     show_weights: bool = True,
     save_path: str | None = None,
+    show: bool = True,
 ) -> None:
     """Plot a generated lobster graph using a symmetric spine-and-branches layout."""
     try:
@@ -169,16 +248,23 @@ def plot_lobster_graph(
     ax.axis("off")
 
     if save_path:
-        fig.savefig(save_path, dpi=200, bbox_inches="tight")
+        try:
+            fig.savefig(save_path, dpi=200, bbox_inches="tight")
+            print(f"Plot saved to {save_path}")
+        except Exception as e:
+            print(f"Failed to save plot to {save_path}: {e}")
 
-    plt.show()
+    if show:
+        plt.show()
 
 #Constants
 print_graph = True
-plot_graph = True
+plot_graph = False
+n = int(input("Please enter n: ")) #5
+p = int(input("Please enter p: ")) #5
+graph_path = f"lobster_graph_n{n}_p{p}.json" #None
+plot_path = f"lobster_plot_n{n}_p{p}.png" #None
 
-n = int(input("Please enter n: "))
-p = int(input("Please enter p: "))
 graph = Graph()
 create_lobster_graph(graph, n, p)
 add_k_labeling(graph, n, p)
@@ -187,8 +273,24 @@ if print_graph:
     print("Node Count: ", graph.node_count)
     print("Edge Count: ", graph.edge_count)
     print("Adjacency List: ", graph.adj_list)
-    print("Edge List: ", graph.edge_list)
+    seen = set()
+    print("Edges:")
+    for u in sorted(graph.edge_list):
+        for v, weight in graph.edge_list[u]:
+            e = (u, v) if u < v else (v, u)
+            if e in seen:
+                continue
+            seen.add(e)
+            print(f"{e[0]} -- {e[1]} (weight={weight})")
     print("Has Duplicate Edge Weights: ", graph.has_duplicate_edge_weights())
+
+if graph_path:
+    save_graph(graph, graph_path)
 
 if plot_graph:
     plot_lobster_graph(graph, n, p, show_labels=True, show_weights=True)
+
+if plot_path:
+    # save without showing the interactive window
+    plot_lobster_graph(graph, n, p, show_labels=True, show_weights=True, save_path=plot_path, show=False)
+
