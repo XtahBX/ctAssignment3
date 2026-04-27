@@ -1,5 +1,6 @@
 import json
 import os
+from collections import deque
 
 
 class Graph:
@@ -69,9 +70,8 @@ def create_lobster_graph(graph: Graph, n: int, p: int):
             for p_idx in range(1, p):
                 graph.add_edge(idx, idx + p_idx)
 
-def middle_node_value(n: int, p: int, idx: int) -> int:
+def middle_node_value(n: int, p: int, curr_section: int) -> int:
     node_section_size = 2 * p + 1
-    curr_section = idx // node_section_size + 1
     if curr_section % 2 == 0:
         return (node_section_size * curr_section) // 2
     else:
@@ -80,9 +80,8 @@ def middle_node_value(n: int, p: int, idx: int) -> int:
         else:
             return ((node_section_size * curr_section) + 1) // 2
 
-def upper_node_value(n: int, p: int, idx: int) -> int:
+def upper_node_value(n: int, p: int, curr_section: int) -> int:
     node_section_size = 2 * p + 1
-    curr_section = idx // node_section_size + 1
     if curr_section % 2 == 0:
         return (node_section_size * curr_section) // 2 - p
     else:
@@ -91,9 +90,8 @@ def upper_node_value(n: int, p: int, idx: int) -> int:
         else:
             return (node_section_size * (curr_section - 1) - 2) // 2
 
-def lower_node_value(n: int, p: int, idx: int) -> int:
+def lower_node_value(n: int, p: int, curr_section: int) -> int:
     node_section_size = 2 * p + 1
-    curr_section = idx // node_section_size + 1
     if curr_section % 2 == 0:
         return (node_section_size * curr_section) // 2
     else:
@@ -104,11 +102,12 @@ def lower_node_value(n: int, p: int, idx: int) -> int:
 
 def circle_node_value(n: int, p: int, idx: int) -> int:
     node_section_size = 2 * p + 1
-    curr_section = idx // node_section_size + 1
-    if idx % node_section_size <= p:
-        j = idx - node_section_size * (curr_section - 1) - 1
+    circle_section_count = 2 * (p - 1)
+    curr_section = idx // circle_section_count + 1
+    if idx % circle_section_count < p - 1:
+        j = idx - circle_section_count * (curr_section - 1) + 1
     else:
-        j = idx - node_section_size * (curr_section - 1) - (p + 1)
+        j = idx - circle_section_count * (curr_section - 1) - (p - 2)
     if curr_section < n:
         if curr_section % 2 == 0:
             return (node_section_size * curr_section) // 2 - p + j
@@ -120,25 +119,51 @@ def circle_node_value(n: int, p: int, idx: int) -> int:
         else:
             return (node_section_size * (curr_section - 1)) // 2 + 1 + j
 
-def add_k_labeling(graph: Graph, n: int, p: int):
-    node_section_size = 2 * p + 1
-    node_total = node_section_size * n
+def k_label_traversal(graph: Graph, n: int, p: int):
+    middle_node_count = -1
+    lower_upper_node_count = -1
+    circle_node_count = -1
     """Add k labeling to the lobster graph."""
-    graph.set_node(0, 1)
-    for idx in range(1, p + 1):
-        graph.set_node(idx, idx)
-        graph.set_node(idx + p, idx)
-    graph.set_node(p + 1, p + 1)
-    for idx in range(node_section_size, node_total):
-        if idx % node_section_size == 0:
-            node_value = middle_node_value(n, p, idx)
-        elif idx % node_section_size == 1:
-            node_value = upper_node_value(n, p, idx)
-        elif idx % node_section_size == p + 1:
-            node_value = lower_node_value(n, p, idx)
+    visited = []
+    q = deque()
+    q.append(0)
+
+    while q:
+        curr_node = q.popleft()
+        visited.append(curr_node)
+        if len(graph.edge_list[curr_node]) > 1:
+            middle_node = True
+            for neighbor, weight in graph.edge_list[curr_node]:
+                if len(graph.edge_list[neighbor]) == 1:
+                    middle_node = False
+                    break
+            if middle_node:
+                middle_node_count += 1
+                graph.set_node(curr_node, middle_node_value(n, p, middle_node_count + 1))
+                for neighbor, weight in graph.edge_list[curr_node]:
+                    if neighbor not in visited:
+                        q.append(neighbor)
+            else:
+                lower_upper_node_count += 1
+                if lower_upper_node_count > 1:
+                    if lower_upper_node_count % 2 == 0:
+                        graph.set_node(curr_node, upper_node_value(n, p, lower_upper_node_count // 2 + 1))
+                    else:
+                        graph.set_node(curr_node, lower_node_value(n, p, lower_upper_node_count // 2 + 1))
+                else:
+                    if lower_upper_node_count % 2 == 0:
+                        graph.set_node(curr_node, 1)
+                    else:
+                        graph.set_node(curr_node, p + 1)
+                for neighbor, weight in graph.edge_list[curr_node]:
+                    if neighbor not in visited:
+                        q.appendleft(neighbor)
         else:
-            node_value = circle_node_value(n, p, idx)
-        graph.set_node(idx, node_value)
+            circle_node_count += 1
+            if circle_node_count >= 2 * (p - 1):
+                graph.set_node(curr_node, circle_node_value(n, p, circle_node_count))
+            else:
+                graph.set_node(curr_node, circle_node_count % (p - 1) + 2)
 
 
 def save_graph(graph: Graph, path: str) -> None:
@@ -259,15 +284,15 @@ def plot_lobster_graph(
 
 #Constants
 print_graph = True
-plot_graph = False
+plot_graph = True
 n = int(input("Please enter n: ")) #5
 p = int(input("Please enter p: ")) #5
-graph_path = f"lobster_graph_n{n}_p{p}.json" #None
-plot_path = f"lobster_plot_n{n}_p{p}.png" #None
+graph_path = None #f"lobster_graph_n{n}_p{p}.json" #None
+plot_path = None #f"lobster_plot_n{n}_p{p}.png" #None
 
 graph = Graph()
 create_lobster_graph(graph, n, p)
-add_k_labeling(graph, n, p)
+k_label_traversal(graph, n, p)
 
 if print_graph:
     print("Node Count: ", graph.node_count)
