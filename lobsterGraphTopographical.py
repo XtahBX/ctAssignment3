@@ -1,18 +1,17 @@
 import json
 import os
-from collections import deque
 
 
 class Graph:
     def __init__(self):
-        self.adj_list: list[int] = []
+        self.adj_list: list[tuple[int, int]] = []
         self.edge_list: dict[int, list[tuple[int, int]]] = {}
         self.edge_count = 0
         self.node_count = 0
 
     def has_duplicate_edge_weights(self) -> bool:
         """Return True when any positive edge weight appears more than once."""
-        if not all(i > 0  for i in self.adj_list):
+        if not all(val > 0 for val, _color in self.adj_list):
             return True
         seen: set[int] = set()
         for u, neighbors in self.edge_list.items():
@@ -27,7 +26,7 @@ class Graph:
     def add_node(self, node_value: int = 0):
         """Add a node to the graph."""
         node_idx = len(self.adj_list)
-        self.adj_list.append(node_value)
+        self.adj_list.append((node_value, 0xFFFFFF))
         self.edge_list[node_idx] = []
         self.node_count += 1
 
@@ -39,19 +38,19 @@ class Graph:
 
     def set_node(self, node_idx: int, node_value: int = 0):
         """Set a node in the graph."""
-        self.adj_list[node_idx] = node_value
+        self.adj_list[node_idx] = (node_value, 0)
         for index, (neighbor, weight) in enumerate(self.edge_list[node_idx]):
-            if self.adj_list[neighbor] > 0:
-                self.edge_list[node_idx][index] = (neighbor, node_value + self.adj_list[neighbor])
+            if self.adj_list[neighbor][0] > 0:
+                self.edge_list[node_idx][index] = (neighbor, node_value + self.adj_list[neighbor][0])
                 for neighbor_index, (neighbor_neighbor, neighbor_weight) in enumerate(self.edge_list[neighbor]):
                     if neighbor_neighbor == node_idx:
-                        self.edge_list[neighbor][neighbor_index] = (node_idx, node_value + self.adj_list[neighbor])
+                        self.edge_list[neighbor][neighbor_index] = (node_idx, node_value + self.adj_list[neighbor][0])
                         break
 
     def clear_graph(self):
         """clear all nodes and edges in the graph."""
         for idx in range(len(self.adj_list)):
-            self.adj_list[idx] = 0
+            self.adj_list[idx] = (0, 0xFFFFFF)
             for edge_idx, (neighbor, weight) in enumerate(self.edge_list[idx]):
                 self.edge_list[idx][edge_idx] = (neighbor, 0)
 
@@ -141,6 +140,22 @@ def add_k_labeling(graph: Graph, n: int, p: int):
             node_value = circle_node_value(n, p, idx)
         graph.set_node(idx, node_value)
 
+def coloring(graph: Graph):
+    colors = [0] * len(graph.adj_list)
+    """Color the graph."""
+    for idx in range(len(graph.adj_list)):
+        for (neighbor, weight) in graph.edge_list[idx]:
+            if graph.adj_list[idx][0] == graph.adj_list[neighbor][0]:
+                colors[idx] = colors[idx] ^ 0xFF0000
+                colors[neighbor] = colors[neighbor] ^ 0xFF0000
+            elif graph.adj_list[idx][0] % 2 == 0 and graph.adj_list[neighbor][0] % 2 == 0:
+                colors[idx] = colors[idx] ^ 0x00FF00
+                colors[neighbor] = colors[neighbor] ^ 0x00FF00
+
+    for idx in range(len(graph.adj_list)):
+        if colors[idx] != 0:
+            graph.adj_list[idx] = (graph.adj_list[idx][0], colors[idx])
+
 
 def save_graph(graph: Graph, path: str) -> None:
     """Save graph to JSON (.json) or edges CSV (.csv)."""
@@ -158,7 +173,10 @@ def save_graph(graph: Graph, path: str) -> None:
                         seen.add(edge)
                         fh.write(f"{edge[0]},{edge[1]},{weight}\n")
         else:
-            payload = {"adj_list": graph.adj_list, "edge_list": {str(k): v for k, v in graph.edge_list.items()}}
+            # Convert tuples to lists for JSON serialization
+            adj_list_serial = [(val, hex(color)) for val, color in graph.adj_list]
+            edge_list_serial = {str(k): v for k, v in graph.edge_list.items()}
+            payload = {"adj_list": adj_list_serial, "edge_list": edge_list_serial}
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2)
         print(f"Graph saved to {path}")
@@ -238,9 +256,17 @@ def plot_lobster_graph(
     for node, (x, y) in positions.items():
         xs.append(x)
         ys.append(y)
-        ax.scatter(x, y, s=260, color="#ebcb8b", edgecolors="#2e3440", linewidth=1.4, zorder=3)
+        # Get node color from graph.adj_list
+        node_color_int = graph.adj_list[node][1]
+        # Convert integer color to hex string for matplotlib
+        if node_color_int == 0xFFFFFF:
+            node_color_hex = "#ebcb8b"  # default light color
+        else:
+            node_color_hex = f"#{node_color_int:06X}"
+        ax.scatter(x, y, s=260, color=node_color_hex, edgecolors="#2e3440", linewidth=1.4, zorder=3)
         if show_labels:
-            ax.text(x, y, str(graph.adj_list[node]), ha="center", va="center", fontsize=8, color="#2e3440", zorder=4)
+            node_value = graph.adj_list[node][0]
+            ax.text(x, y, str(node_value), ha="center", va="center", fontsize=8, color="#2e3440", zorder=4)
 
     ax.set_title(f"Lobster Graph (n={n}, p={p})")
     ax.set_aspect("equal", adjustable="box")
@@ -263,21 +289,24 @@ print_graph = True
 plot_graph = True
 n = int(input("Please enter n: ")) #5
 p = int(input("Please enter p: ")) #5
-graph_path = None #f"lobster_graph_n{n}_p{p}.json" #None
-plot_path = None #f"lobster_plot_n{n}_p{p}.png" #None
-traversal = True
+add_colors = True
+graph_path = f"lobster_graph_n{n}_p{p}.json" #None
+plot_path = f"lobster_plot_n{n}_p{p}.png" #None
 
 graph = Graph()
 create_lobster_graph(graph, n, p)
-if traversal:
-    k_label_traversal(graph, n, p)
-else:
-    add_k_labeling(graph, n, p)
+add_k_labeling(graph, n, p)
+
+if add_colors:
+    coloring(graph)
 
 if print_graph:
     print("Node Count: ", graph.node_count)
     print("Edge Count: ", graph.edge_count)
-    print("Adjacency List: ", graph.adj_list)
+    print("Nodes (value, color):")
+    for idx, (val, color) in enumerate(graph.adj_list):
+        color_hex = hex(color) if color != 0xFFFFFF else "0xFFFFFF (white)"
+        print(f"  Node {idx}: value={val}, color={color_hex}")
     seen = set()
     print("Edges:")
     for u in sorted(graph.edge_list):
