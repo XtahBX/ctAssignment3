@@ -26,7 +26,7 @@ class Graph:
     def add_node(self, node_value: int = 0):
         """Add a node to the graph."""
         node_idx = len(self.adj_list)
-        self.adj_list.append((node_value, 0xFFFFFF))
+        self.adj_list.append((node_value, 0))
         self.edge_list[node_idx] = []
         self.node_count += 1
 
@@ -38,7 +38,7 @@ class Graph:
 
     def set_node(self, node_idx: int, node_value: int = 0):
         """Set a node in the graph."""
-        self.adj_list[node_idx] = (node_value, 0xFFFFFF)
+        self.adj_list[node_idx] = (node_value, 0)
         for index, (neighbor, weight) in enumerate(self.edge_list[node_idx]):
             if self.adj_list[neighbor][0] > 0:
                 self.edge_list[node_idx][index] = (neighbor, node_value + self.adj_list[neighbor][0])
@@ -50,7 +50,7 @@ class Graph:
     def clear_graph(self):
         """clear all nodes and edges in the graph."""
         for idx in range(len(self.adj_list)):
-            self.adj_list[idx] = (0, 0xFFFFFF)
+            self.adj_list[idx] = (0, 0)
             for edge_idx, (neighbor, weight) in enumerate(self.edge_list[idx]):
                 self.edge_list[idx][edge_idx] = (neighbor, 0)
 
@@ -141,20 +141,15 @@ def add_k_labeling(graph: Graph, n: int, p: int):
         graph.set_node(idx, node_value)
 
 def coloring(graph: Graph):
-    colors = [0] * len(graph.adj_list)
     """Color the graph."""
     for idx in range(len(graph.adj_list)):
         for (neighbor, weight) in graph.edge_list[idx]:
             if graph.adj_list[idx][0] == graph.adj_list[neighbor][0]:
-                colors[idx] = colors[idx] | 0xFF0000
-                colors[neighbor] = colors[neighbor] | 0xFF0000
+                graph.adj_list[idx] = (graph.adj_list[idx][0], graph.adj_list[idx][1] | 0xFF0000)
+                graph.adj_list[neighbor] = (graph.adj_list[neighbor][0], graph.adj_list[neighbor][1] | 0xFF0000)
             elif graph.adj_list[idx][0] % 2 == 0 and graph.adj_list[neighbor][0] % 2 == 0:
-                colors[idx] = colors[idx] | 0x00FF00
-                colors[neighbor] = colors[neighbor] | 0x00FF00
-
-    for idx in range(len(graph.adj_list)):
-        if colors[idx] != 0:
-            graph.adj_list[idx] = (graph.adj_list[idx][0], colors[idx])
+                graph.adj_list[idx] = (graph.adj_list[idx][0], graph.adj_list[idx][1] | 0x00FF00)
+                graph.adj_list[neighbor] = (graph.adj_list[neighbor][0], graph.adj_list[neighbor][1] | 0x00FF00)
 
 
 def save_graph(graph: Graph, path: str) -> None:
@@ -259,7 +254,7 @@ def plot_lobster_graph(
         # Get node color from graph.adj_list
         node_color_int = graph.adj_list[node][1]
         # Convert integer color to hex string for matplotlib
-        if node_color_int == 0xFFFFFF:
+        if node_color_int == 0:
             node_color_hex = "#ebcb8b"  # default light color
         else:
             node_color_hex = f"#{node_color_int:06X}"
@@ -305,7 +300,7 @@ if print_graph:
     print("Edge Count: ", graph.edge_count)
     print("Nodes (value, color):")
     for idx, (val, color) in enumerate(graph.adj_list):
-        color_hex = hex(color) if color != 0xFFFFFF else "0xFFFFFF (white)"
+        color_hex = hex(color) if color != 0 else "0xFFFFFF (white)"
         print(f"  Node {idx}: value={val}, color={color_hex}")
     seen = set()
     print("Edges:")
