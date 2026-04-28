@@ -38,7 +38,7 @@ class Graph:
 
     def set_node(self, node_idx: int, node_value: int = 0):
         """Set a node in the graph."""
-        self.adj_list[node_idx] = (node_value, 0)
+        self.adj_list[node_idx] = (node_value, 0xFFFFFF)
         for index, (neighbor, weight) in enumerate(self.edge_list[node_idx]):
             if self.adj_list[neighbor][0] > 0:
                 self.edge_list[node_idx][index] = (neighbor, node_value + self.adj_list[neighbor][0])
@@ -146,11 +146,11 @@ def coloring(graph: Graph):
     for idx in range(len(graph.adj_list)):
         for (neighbor, weight) in graph.edge_list[idx]:
             if graph.adj_list[idx][0] == graph.adj_list[neighbor][0]:
-                colors[idx] = colors[idx] ^ 0xFF0000
-                colors[neighbor] = colors[neighbor] ^ 0xFF0000
+                colors[idx] = colors[idx] | 0xFF0000
+                colors[neighbor] = colors[neighbor] | 0xFF0000
             elif graph.adj_list[idx][0] % 2 == 0 and graph.adj_list[neighbor][0] % 2 == 0:
-                colors[idx] = colors[idx] ^ 0x00FF00
-                colors[neighbor] = colors[neighbor] ^ 0x00FF00
+                colors[idx] = colors[idx] | 0x00FF00
+                colors[neighbor] = colors[neighbor] | 0x00FF00
 
     for idx in range(len(graph.adj_list)):
         if colors[idx] != 0:
