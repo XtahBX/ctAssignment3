@@ -170,11 +170,11 @@ def coloring(graph: Graph):
     for idx in range(len(graph.adj_list)):
         for (neighbor, weight) in graph.edge_list[idx]:
             if graph.adj_list[idx][0] == graph.adj_list[neighbor][0]:
-                graph.adj_list[idx] = (graph.adj_list[idx][0], graph.adj_list[idx][1] | 0xFF0000)
-                graph.adj_list[neighbor] = (graph.adj_list[neighbor][0], graph.adj_list[neighbor][1] | 0xFF0000)
-            elif graph.adj_list[idx][0] % 2 == 0 and graph.adj_list[neighbor][0] % 2 == 0:
                 graph.adj_list[idx] = (graph.adj_list[idx][0], graph.adj_list[idx][1] | 0x00FF00)
                 graph.adj_list[neighbor] = (graph.adj_list[neighbor][0], graph.adj_list[neighbor][1] | 0x00FF00)
+            elif graph.adj_list[idx][0] % 2 == 0 and graph.adj_list[neighbor][0] % 2 == 0:
+                graph.adj_list[idx] = (graph.adj_list[idx][0], graph.adj_list[idx][1] | 0xFF0000)
+                graph.adj_list[neighbor] = (graph.adj_list[neighbor][0], graph.adj_list[neighbor][1] | 0xFF0000)
 
 
 def save_graph(graph: Graph, path: str) -> None:
