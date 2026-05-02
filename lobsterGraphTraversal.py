@@ -108,14 +108,11 @@ def circle_node_value(n: int, p: int, idx: int) -> int:
         j = idx - circle_section_count * (curr_section - 1) + 1
     else:
         j = idx - circle_section_count * (curr_section - 1) - (p - 2)
-    if curr_section < n:
-        if curr_section % 2 == 0:
-            return (node_section_size * curr_section) // 2 - p + j
-        else:
-            return (node_section_size * (curr_section - 1)) // 2 - p + 1 + j
+    if curr_section % 2 == 0:
+        return (node_section_size * curr_section) // 2 - p + j
     else:
-        if curr_section % 2 == 0:
-            return (node_section_size * curr_section) // 2 + j
+        if curr_section < n:
+            return (node_section_size * (curr_section - 1)) // 2 - p + 1 + j
         else:
             return (node_section_size * (curr_section - 1)) // 2 + 1 + j
 
@@ -321,8 +318,6 @@ if add_colors:
     coloring(graph)
 
 if print_graph:
-    print("Node Count: ", graph.node_count)
-    print("Edge Count: ", graph.edge_count)
     print("Nodes (value, color):")
     for idx, (val, color) in enumerate(graph.adj_list):
         color_hex = hex(color) if color != 0 else "0xFFFFFF (white)"
@@ -336,6 +331,9 @@ if print_graph:
                 continue
             seen.add(e)
             print(f"{e[0]} -- {e[1]} (weight={weight})")
+    print("Node Count: ", graph.node_count)
+    print("Edge Count: ", graph.edge_count)
+    print("max k: ", max(graph.adj_list))
     print("Has Duplicate Edge Weights: ", graph.has_duplicate_edge_weights())
 
 if graph_path:
